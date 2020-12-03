@@ -1,34 +1,31 @@
 var Gpio = require('onoff').Gpio;
 
-var saltWaterLevelSensor = new Gpio(12, 'in', 'both');
-var wasteFlowSensor = new Gpio(19, 'in', 'both');
-var saltFlowSensor = new Gpio(26, 'in', 'both');
+var saltWaterLevelSensor = new Gpio(1, 'in', 'both'); 	//Yellow
+var wasteFlowSensor = new Gpio(12, 'in', 'both');		//White
+var saltFlowSensor = new Gpio(16, 'in', 'both');		//Orange
 
-var wasteWaterValve = new Gpio(16, 'out');
-var pureWaterValve = new Gpio(20, 'out');
-var saltWaterValve = new Gpio(21, 'out');
+var wasteWaterValve = new Gpio(20, 'out');	//Purple
+var pureWaterValve = new Gpio(21, 'out');	//Brown
+var saltWaterValve = new Gpio(26, 'out');	//Red
 
 var saltEmptyEvtFunc = null;
 var waterChangeEvtFunc = null;
 var waterEmptyChecker = 0;
 
 var status = "idle";
+var temperature = 0;
 var isWaterEmpty = false;
 var changeMount = 0;
 var wasteWaterFlowCount = 0;
 var saltWaterFlowCount = 0;
 var prevSaltWaterFlowCount = -1;
 
-saltWaterLevelSensor.watch(function (err, value) {
-	if (err) {
-		console.error('There was an error of Water Level sensor', err);
-		return;
-	}
+var wasteTime = 0;
+var refillTime = 0;
+var remainWasteTime = 0;
+var remainRefillTime = 0;
 
-	if(value == 1){
-		waterEmptyChecker++;
-	}
-});
+var exec = require('child_process').exec;
 
 wasteFlowSensor.watch(function (err, value) {
 	if (err) {
@@ -36,13 +33,13 @@ wasteFlowSensor.watch(function (err, value) {
 		return;
 	}
 
-	console.log("Wasting Flow : " + value);
-	waterFlowCount++;
+	console.log("Wasting Flow : " + wasteWaterFlowCount);
+	wasteWaterFlowCount++;
 
 	if(status === "wasting"){
 		waterChangeEvtFunc({
 			status: "wasting",
-			value: waterFlowCount
+			value: wasteWaterFlowCount
 		});
 
 		if(wasteWaterFlowCount > changeMount){
@@ -59,7 +56,7 @@ saltFlowSensor.watch(function (err, value) {
 		return;
 	}
 
-	console.log("Salt Flow : " + value);
+	//console.log("Salt Flow : " + value);
 	saltWaterFlowCount++;
 
 	if(status === "salt"){
@@ -70,9 +67,10 @@ saltFlowSensor.watch(function (err, value) {
 	}
 });
 
-//Empty check
+//Empty & Temp check
 setInterval(function() {
-	if(waterEmptyChecker == 0){
+	var empty = saltWaterLevelSensor.readSync();
+	if(empty == 0){
 		console.log("Salt Water is Empty!");
 
 		isWaterEmpty = true;
@@ -99,6 +97,9 @@ setInterval(function() {
 		}
 	}
 	waterEmptyChecker = 0;
+
+	//Temperature
+	exeTemperature();
 }, 10000);
 
 //check Salt adding end
@@ -139,11 +140,15 @@ setInterval(function() {
 }, 30000);
 
 function openWasteWaterValve(){
-	wasteWaterValve.writeSync(1);
+	wasteWaterValve.writeSync(0);
 }
 
 function closeWasteWaterValve(){
-	wasteWaterValve.writeSync(0);
+	wasteWaterValve.writeSync(1);
+}
+
+function getWasteWaterValve(){
+	return wasteWaterValve.readSync();
 }
 
 function openPureWaterValve(){
@@ -154,12 +159,20 @@ function closePureWaterValve(){
 	pureWaterValve.writeSync(0);
 }
 
+function getPureWaterValve(){
+	return pureWaterValve.readSync();
+}
+
 function openSaltWaterValve(){
-	saltWaterValve.writeSync(1);
+	saltWaterValve.writeSync(0);
 }
 
 function closeSaltWaterValve(){
-	saltWaterValve.writeSync(0);
+	saltWaterValve.writeSync(1);
+}
+
+function getSaltWaterValve(){
+	return saltWaterValve.readSync();
 }
 
 module.exports.setSaltWaterEvent = function(evtFunc){
@@ -188,17 +201,131 @@ module.exports.waterChange = function(evtFunc, milliLiter){
 }
 
 module.exports.getStatus = function(){
+	var valveStatus = {
+		pure: "none",
+		waste: "none",
+		salt: "none"
+	};
+	
+	if (getPureWaterValve() == 0) {
+		valveStatus.pure = "close";
+	}
+	else {
+		valveStatus.pure = "open";
+	}
+	
+	if (getWasteWaterValve() == 1) {
+		valveStatus.waste = "close";
+	}
+	else {
+		valveStatus.waste = "open";
+	}
+	
+	if (getSaltWaterValve() == 1) {
+		valveStatus.salt = "close";
+	}
+	else {
+		valveStatus.salt = "open";
+	}
+
 	return {
 		status: status,
 		changeMount: changeMount,
 		wasteWaterFlowCount: wasteWaterFlowCount,
-		saltWaterFlowCount: saltWaterFlowCount
+		saltWaterFlowCount: saltWaterFlowCount,
+		remainWasteTime: remainWasteTime,
+		remainRefillTime: remainRefillTime,
+		valve: valveStatus,
+		temperature: temperature
 	};
+}
+
+function exeTemperature() {
+	child = exec("./DS18B20Scan -gpio 4", function (error, stdout, stderr) {
+   	if (error !== null) {
+        	console.log('exec error: ' + error);
+    	}
+		var result = stdout.split(' ');
+		console.log(result);
+		if(result[0] === "***"){
+			return;
+		}
+		temperature = result[7];
+	});
+}
+
+module.exports.getTemperature = function() {
+	return temperature;
 }
 
 module.exports.openWasteWaterValve = openWasteWaterValve;
 module.exports.closeWasteWaterValve = closeWasteWaterValve;
+module.exports.getWasteWaterValve = getWasteWaterValve;
 module.exports.openPureWaterValve = openPureWaterValve;
 module.exports.closePureWaterValve = closePureWaterValve;
+module.exports.getPureWaterValve = getPureWaterValve;
 module.exports.openSaltWaterValve = openSaltWaterValve;
 module.exports.closeSaltWaterValve = closeSaltWaterValve;
+module.exports.getSaltWaterValve = getSaltWaterValve;
+
+//Timer Preset Loop
+setInterval(() => {
+	if(remainWasteTime > 0){
+		if(getWasteWaterValve() == 1){
+			openWasteWaterValve();
+		}
+
+		if(getPureWaterValve() == 1){
+			closePureWaterValve();
+		}
+
+		if(getSaltWaterValve() == 0){
+			closeSaltWaterValve();
+		}
+
+		remainWasteTime--;
+	}
+	else if(remainRefillTime > 0){
+		if(getWasteWaterValve() == 0){
+			closeWasteWaterValve();
+		}
+
+		if(getPureWaterValve() == 1){
+			closePureWaterValve();
+		}
+
+		if(getSaltWaterValve() == 1){
+			openSaltWaterValve();
+		}
+
+		remainRefillTime--;
+	}
+	else if(status === "timerchange"){
+		if(getPureWaterValve() == 0){
+			openPureWaterValve();
+		}
+
+		if(getSaltWaterValve() == 0){
+			closeSaltWaterValve();
+		}
+
+		if(getWasteWaterValve() == 0){
+			closeWasteWaterValve();
+		}
+
+		status = "idle";
+	}
+}, 1000);
+
+module.exports.timerChange = function(wasteRequestTime, refillRequestTime){
+	status = "timerchange";
+	wasteTime = wasteRequestTime;
+	refillTime = refillRequestTime;	
+
+	remainWasteTime = wasteTime;
+	remainRefillTime = refillTime;
+}
+
+closeWasteWaterValve();
+closeSaltWaterValve();
+openPureWaterValve();

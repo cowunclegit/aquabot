@@ -12,7 +12,7 @@ class App extends React.Component {
     waste: "close",
     salt: "close",
     wasteTime: 180,
-    refillTime: 600,
+    refillTime: 1200,
   };
 
   componentDidMount() {
@@ -179,7 +179,7 @@ class App extends React.Component {
             <Slider style={{width:"300px"}} marks={marks} step={10} min={10} max={300} defaultValue={180} disabled={inputDisable} onChange={this.wasteTimeValue} />
           </Descriptions.Item>
           <Descriptions.Item label="타이머 자동 보충 시간">
-            <Slider style={{width:"300px"}} marks={refillMarks} step={10} min={60} max={1800} defaultValue={600} disabled={inputDisable} onChange={this.refillTimeValue} />
+            <Slider style={{width:"300px"}} marks={refillMarks} step={10} min={60} max={1800} defaultValue={1200} disabled={inputDisable} onChange={this.refillTimeValue} />
           </Descriptions.Item>
           <Descriptions.Item>
             <Button type="primary" size="small" loading={autoWorking} onClick={() => this.enterTimerChange()}>

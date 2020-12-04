@@ -1,4 +1,9 @@
 var Gpio = require('onoff').Gpio;
+var elasticsearch = require('elasticsearch');
+var client = new elasticsearch.Client({
+	host: '192.168.0.13:9200',
+	log: 'trace'
+})
 
 var saltWaterLevelSensor = new Gpio(1, 'in', 'both'); 	//Yellow
 var wasteFlowSensor = new Gpio(12, 'in', 'both');		//White
@@ -13,7 +18,7 @@ var waterChangeEvtFunc = null;
 var waterEmptyChecker = 0;
 
 var status = "idle";
-var temperature = 0;
+var temperature = 0.0;
 var isWaterEmpty = false;
 var changeMount = 0;
 var wasteWaterFlowCount = 0;
@@ -100,6 +105,14 @@ setInterval(function() {
 
 	//Temperature
 	exeTemperature();
+	
+	//Log to elasticsearch
+	var json = getStatus();
+	json.date = new Date();
+	client.index({
+		index: "aquabot_status",
+		body: json
+	});
 }, 10000);
 
 //check Salt adding end
@@ -200,7 +213,7 @@ module.exports.waterChange = function(evtFunc, milliLiter){
 	}
 }
 
-module.exports.getStatus = function(){
+function getStatus(){
 	var valveStatus = {
 		pure: "none",
 		waste: "none",
@@ -267,6 +280,7 @@ module.exports.getPureWaterValve = getPureWaterValve;
 module.exports.openSaltWaterValve = openSaltWaterValve;
 module.exports.closeSaltWaterValve = closeSaltWaterValve;
 module.exports.getSaltWaterValve = getSaltWaterValve;
+module.exports.getStatus = getStatus;
 
 //Timer Preset Loop
 setInterval(() => {
@@ -329,3 +343,84 @@ module.exports.timerChange = function(wasteRequestTime, refillRequestTime){
 closeWasteWaterValve();
 closeSaltWaterValve();
 openPureWaterValve();
+
+client.indices.exists({
+	index: "aquabot_status"
+}).then(function(result){
+	console.log(result);
+	if(result == false){
+		client.indices.create({
+			index: "aquabot_status",
+			body: {
+				"settings": {
+					"number_of_shards": 1
+				  },
+					"mappings":{
+						"properties": {
+						  "changeMount": {
+							"type": "long"
+						  },
+						  "date": {
+							"type": "date"
+						  },
+						  "remainRefillTime": {
+							"type": "long"
+						  },
+						  "remainWasteTime": {
+							"type": "long"
+						  },
+						  "saltWaterFlowCount": {
+							"type": "long"
+						  },
+						  "status": {
+							"type": "text",
+							"fields": {
+							  "keyword": {
+								"type": "keyword",
+								"ignore_above": 256
+							  }
+							}
+						  },
+						  "temperature": {
+							"type": "double"
+						  },
+						  "valve": {
+							"properties": {
+							  "pure": {
+								"type": "text",
+								"fields": {
+								  "keyword": {
+									"type": "keyword",
+									"ignore_above": 256
+								  }
+								}
+							  },
+							  "salt": {
+								"type": "text",
+								"fields": {
+								  "keyword": {
+									"type": "keyword",
+									"ignore_above": 256
+								  }
+								}
+							  },
+							  "waste": {
+								"type": "text",
+								"fields": {
+								  "keyword": {
+									"type": "keyword",
+									"ignore_above": 256
+								  }
+								}
+							  }
+							}
+						  },
+						  "wasteWaterFlowCount": {
+							"type": "long"
+						  }
+						}
+					  }
+					}
+		});
+	}
+});

@@ -1,6 +1,8 @@
 import React from 'react';
 import './App.css';
-import { Button, Switch, Steps, Slider, Descriptions, PageHeader, Tag } from 'antd';
+import Login from './Login';
+import CheckLogin from './CheckLogin';
+import { Button, Switch, Steps, Slider, Descriptions, PageHeader, Tag, Alert } from 'antd';
 import { UserOutlined, SolutionOutlined, LoadingOutlined, SmileOutlined } from '@ant-design/icons';
 
 const { Step } = Steps;
@@ -13,15 +15,29 @@ class App extends React.Component {
     salt: "close",
     wasteTime: 180,
     refillTime: 1200,
+    user: null
   };
 
   componentDidMount() {
     this.getStatus();
     this.interval = setInterval(() => this.getStatus(), 1000);
+    this.checkLogin();
+  }
+
+  checkLogin = () => {
+    fetch("/login")
+      .then(response => response.json())
+      .then(response => {
+        console.log(response);
+        this.setState({ 
+          user: response.user
+        });
+      });
   }
 
   getStatus = () => {
-    fetch("/api/status")
+    if(this.state.user){
+      fetch("/api/status")
       .then(response => response.json())
       .then(response => {
         console.log(response);
@@ -34,7 +50,11 @@ class App extends React.Component {
           remainWasteTime: response.remainWasteTime,
           remainRefillTime: response.remainRefillTime
         });
+      }).catch((error) => {
+        console.error(error);
+        this.setState({user:""});
       });
+    }
   }
 
   toggleWaterValve = (name) => {
@@ -76,6 +96,10 @@ class App extends React.Component {
     });
   }
 
+  loginResult = (response) => {
+    this.checkLogin();
+  }
+
   render() {
     var pure = false;
     var waste = false;
@@ -94,6 +118,7 @@ class App extends React.Component {
     }
 
     var timer = <div></div>;
+    var emptyError = <div></div>;
     var inputDisable = false;
     var autoWorking = false;
 
@@ -126,6 +151,13 @@ class App extends React.Component {
     else if(this.state.status === "empty"){
       inputDisable = true;
       autoWorking = false;
+
+      emptyError = <Alert
+        message="Error"
+        description="보충 해수가 비었습니다. 새로 해수를 만들어 주세요."
+        type="error"
+        showIcon
+      />;
     }
 
     const marks = {
@@ -160,38 +192,51 @@ class App extends React.Component {
       tempColor = "error";
     }
 
-    return (
-      <div className="App">
-        <header className="App-header">
-        <PageHeader
-      ghost={false}
-      title="Aquabot"
-      subTitle="Automated aquarium management system"
-      extra={[
-        <Tag color={tempColor}>{this.state.temperature}도</Tag>,
-        <Switch checkedChildren="정수기 급수 중" unCheckedChildren="정수기 급수 막힘" checked={pure} onClick={() => this.toggleWaterValve("pure")} />,
-        <Switch checkedChildren="폐수 열림" unCheckedChildren="폐수 막힘" checked={waste} onClick={() => this.toggleWaterValve("waste")} />,
-        <Switch checkedChildren="해수 열림" unCheckedChildren="해수 막힘" checked={salt} onClick={() => this.toggleWaterValve("salt")} />,
-      ]}
-    >
-        <Descriptions size="small" column={1}>
-          <Descriptions.Item label="타이머 자동 배수 시간">
-            <Slider style={{width:"300px"}} marks={marks} step={10} min={10} max={300} defaultValue={180} disabled={inputDisable} onChange={this.wasteTimeValue} />
-          </Descriptions.Item>
-          <Descriptions.Item label="타이머 자동 보충 시간">
-            <Slider style={{width:"300px"}} marks={refillMarks} step={10} min={60} max={1800} defaultValue={1200} disabled={inputDisable} onChange={this.refillTimeValue} />
-          </Descriptions.Item>
-          <Descriptions.Item>
-            <Button type="primary" size="small" loading={autoWorking} onClick={() => this.enterTimerChange()}>
-              Timer Change
-            </Button>
-          </Descriptions.Item>
-          {timer}
-        </Descriptions>
-       </PageHeader>
-       </header>
-      </div>
-    );
+    if(this.state.user == null){
+      return (
+        <CheckLogin />
+      )
+    }
+    else if(this.state.user === ""){
+      return (
+        <Login loginResult={this.loginResult} />
+      )
+    }
+    else {
+      return (
+        <div className="App">
+          <header className="App-header">
+            {emptyError}
+          <PageHeader
+            ghost={false}
+            title="Aquabot"
+            subTitle="Automated aquarium management system"
+            extra={[
+              <Tag color={tempColor}>{this.state.temperature}도</Tag>,
+              <Switch checkedChildren="정수기 급수 중" unCheckedChildren="정수기 급수 막힘" checked={pure} onClick={() => this.toggleWaterValve("pure")} />,
+              <Switch checkedChildren="폐수 열림" unCheckedChildren="폐수 막힘" checked={waste} onClick={() => this.toggleWaterValve("waste")} />,
+              <Switch checkedChildren="해수 열림" unCheckedChildren="해수 막힘" checked={salt} onClick={() => this.toggleWaterValve("salt")} />,
+            ]}
+          >
+          <Descriptions size="small" column={1}>
+            <Descriptions.Item label="타이머 자동 배수 시간">
+              <Slider style={{width:"300px"}} marks={marks} step={10} min={10} max={300} defaultValue={180} disabled={inputDisable} onChange={this.wasteTimeValue} />
+            </Descriptions.Item>
+            <Descriptions.Item label="타이머 자동 보충 시간">
+              <Slider style={{width:"300px"}} marks={refillMarks} step={10} min={60} max={1800} defaultValue={1200} disabled={inputDisable} onChange={this.refillTimeValue} />
+            </Descriptions.Item>
+            <Descriptions.Item>
+              <Button type="primary" size="small" loading={autoWorking} onClick={() => this.enterTimerChange()}>
+                Timer Change
+              </Button>
+            </Descriptions.Item>
+            {timer}
+          </Descriptions>
+         </PageHeader>
+         </header>
+        </div>
+      );
+    }
   }
 }
 

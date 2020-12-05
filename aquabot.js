@@ -2,6 +2,7 @@ var Gpio = require('onoff').Gpio;
 var elasticsearch = require('elasticsearch');
 var client = new elasticsearch.Client({
 	host: '192.168.0.13:9200',
+	httpAuth: "aquabot:" + process.env.AQUA_BOT_PASSWORD,
 	log: 'trace'
 })
 
@@ -72,6 +73,15 @@ saltFlowSensor.watch(function (err, value) {
 	}
 });
 
+saltWaterLevelSensor.watch(function (err, value) {
+	if (err) {
+		console.error('There was an error of Salt water Level sensor', err);
+		return;
+	}
+
+	console.log("Salt Level : " + value);
+})
+
 //Empty & Temp check
 setInterval(function() {
 	var empty = saltWaterLevelSensor.readSync();
@@ -114,6 +124,11 @@ setInterval(function() {
 		body: json
 	});
 }, 10000);
+
+/*setInterval(function() {
+	console.log(saltWaterLevelSensor.readSync());
+}, 500);
+*/
 
 //check Salt adding end
 setInterval(function() {
@@ -284,6 +299,14 @@ module.exports.getStatus = getStatus;
 
 //Timer Preset Loop
 setInterval(() => {
+	/*if(status === "empty"){
+		remainWasteTime = 0;
+		remainRefillTime = 0;
+		closePureWaterValve();
+		closeSaltWaterValve();
+		closeWasteWaterValve();
+	}*/
+	
 	if(remainWasteTime > 0){
 		if(getWasteWaterValve() == 1){
 			openWasteWaterValve();

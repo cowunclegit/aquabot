@@ -3,10 +3,20 @@ var router = express.Router();
 var aquabot = require('../aquabot');
 
 router.get('/status', function (req, res, next) {
-  res.send(aquabot.getStatus());
+  if (!req.isAuthenticated()){
+    return res.status(401).send("Need to login");
+  }
+  
+  var status = aquabot.getStatus();
+  status.user = req.user;
+  res.send(status);
 });
 
 router.get('/valve', function (req, res, next) {
+  if (!req.isAuthenticated()){
+    return res.status(401).send("Need to login");
+  }
+
   var valve = req.query.name;
 
   var valveStatus = {
@@ -53,6 +63,10 @@ router.get('/valve', function (req, res, next) {
 });
 
 router.post('/valve', function (req, res, next) {
+  if (!req.isAuthenticated()){
+    return res.status(401).send("Need to login");
+  }
+
   var valve = req.query.name;
 
   if (valve === "pure") {
@@ -88,6 +102,10 @@ router.post('/valve', function (req, res, next) {
 });
 
 router.get('/temperature', function(req, res, next){
+  if (!req.isAuthenticated()){
+    return res.status(401).send("Need to login");
+  }
+
   var temp = aquabot.getTemperature();
   res.send({
     temperature: temp
@@ -95,6 +113,10 @@ router.get('/temperature', function(req, res, next){
 });
 
 router.post('/preset', function(req, res, next){
+  if (!req.isAuthenticated()){
+    return res.status(401).send("Need to login");
+  }
+
   var action = req.body.action;
 
   console.log("Action = " + action);

@@ -116,13 +116,15 @@ setInterval(function() {
 	//Temperature
 	exeTemperature();
 	
-	//Log to elasticsearch
-	var json = getStatus();
-	json.date = new Date();
-	client.index({
-		index: "aquabot_status",
-		body: json
-	});
+	if(temperature > 0){
+		//Log to elasticsearch
+		var json = getStatus();
+		json.date = new Date();
+		client.index({
+			index: "aquabot_status",
+			body: json
+		});
+	}
 }, 10000);
 
 /*setInterval(function() {

@@ -2,7 +2,7 @@ import React from 'react';
 import './App.css';
 import Login from './Login';
 import CheckLogin from './CheckLogin';
-import { Button, Switch, Steps, Slider, Descriptions, PageHeader, Tag, Alert } from 'antd';
+import { Button, Switch, Steps, Slider, Descriptions, PageHeader, Tag, Alert, Space } from 'antd';
 import { UserOutlined, SolutionOutlined, LoadingOutlined, SmileOutlined } from '@ant-design/icons';
 
 const { Step } = Steps;
@@ -15,6 +15,10 @@ class App extends React.Component {
     salt: "close",
     wasteTime: 180,
     refillTime: 1200,
+    schedulerInterval: 3,
+    schedulerRunningInterval: 0,
+    schedulerWasteRequestTime: 0,
+    schedulerRefillRequestTime: 0,
     user: null
   };
 
@@ -48,7 +52,11 @@ class App extends React.Component {
           waste: response.valve.waste,
           salt: response.valve.salt,
           remainWasteTime: response.remainWasteTime,
-          remainRefillTime: response.remainRefillTime
+          remainRefillTime: response.remainRefillTime,
+          schedulerStatus: response.schedulerStatus,
+          schedulerRunningInterval: response.schedulerInterval,
+          schedulerWasteRequestTime: response.schedulerWasteRequestTime,
+          schedulerRefillRequestTime: response.schedulerRefillRequestTime
         });
       }).catch((error) => {
         console.error(error);
@@ -84,6 +92,35 @@ class App extends React.Component {
       });
   }
 
+  setSchedule = () => {
+    fetch("/api/schedule", {
+      method:"POST",
+      headers: {
+        'Content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        type: "timerchange",
+        interval: this.state.schedulerInterval,
+        wasteTime: this.state.wasteTime,
+        refillTime: this.state.refillTime
+      })
+    })
+      .then(response => {
+        console.log(response);
+        this.getStatus();
+      });
+  }
+
+  stopSchedule = () => {
+    fetch("/api/schedule", {
+      method:"DELETE"
+    })
+      .then(response => {
+        console.log(response);
+        this.getStatus();
+      });
+  }
+
   wasteTimeValue = (value) => {
     this.setState({
       wasteTime: value
@@ -94,6 +131,12 @@ class App extends React.Component {
     this.setState({
       refillTime: value
     });
+  }
+
+  schedulerIntervalValue = (value) => {
+    this.setState({
+      schedulerInterval: value
+    })
   }
 
   loginResult = (response) => {
@@ -184,6 +227,38 @@ class App extends React.Component {
       }
     };
 
+    const scheduleMarks = {
+      1: '1회',
+      2: '2회',
+      3: '3회',
+      4: '4회',
+      5: '5회'
+    };
+
+    var scheduler = <>
+    <Descriptions.Item>
+      <Slider style={{width:"300px"}} marks={scheduleMarks} step={1} min={1} max={5} defaultValue={3} onChange={this.schedulerIntervalValue} />
+    </Descriptions.Item>
+    <Descriptions.Item>
+      <Space>
+        <Button type="primary" size="small" onClick={() => this.setSchedule()}>
+          Set Schedule
+        </Button>
+        <Button type="primary" size="small" onClick={() => this.stopSchedule()}>
+          Stop Schedule
+        </Button>
+      </Space>
+    </Descriptions.Item>
+    </>;
+
+    var schedulerStatus = <div></div>;
+
+    if(this.state.schedulerRunningInterval > 0){
+      schedulerStatus = <Descriptions.Item>
+        <Alert message={"현재 스케쥴 - 하루 " + this.state.schedulerRunningInterval + "회 수행, 배수 시간 : " + this.state.schedulerWasteRequestTime + "초, 보충 시간 : " + this.state.schedulerRefillRequestTime + "초"} type="success" />
+      </Descriptions.Item>
+    }
+
     var tempColor = "success";
 
     console.log(parseFloat(this.state.temperature));
@@ -231,6 +306,8 @@ class App extends React.Component {
               </Button>
             </Descriptions.Item>
             {timer}
+            {scheduler}
+            {schedulerStatus}
           </Descriptions>
          </PageHeader>
          </header>

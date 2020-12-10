@@ -130,4 +130,34 @@ router.post('/preset', function(req, res, next){
   res.send("ok");
 });
 
+router.post('/schedule', function(req, res, next){
+  if (!req.isAuthenticated()){
+    return res.status(401).send("Need to login");
+  }
+
+  var type = req.body.type;
+
+  console.log("Setschedule = " + type);
+
+  if(type === "timerchange"){
+    var wasteTime = req.body.wasteTime;
+    var refillTime = req.body.refillTime;
+    var interval = req.body.interval;
+
+    console.log("Set Schedule : " + interval + ", " + wasteTime + ", " + refillTime);
+    aquabot.stopTimerScheduler();
+    aquabot.startTimerScheduler(interval, wasteTime, refillTime);
+  }
+  res.send("ok");
+});
+
+router.delete('/schedule', function(req, res, next){
+  if (!req.isAuthenticated()){
+    return res.status(401).send("Need to login");
+  }
+
+  aquabot.stopTimerScheduler();
+  res.send("ok");
+})
+
 module.exports = router;

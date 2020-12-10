@@ -1,8 +1,7 @@
 var Gpio = require('onoff').Gpio;
 var elasticsearch = require('elasticsearch');
 var client = new elasticsearch.Client({
-	host: '192.168.0.13:9200',
-	httpAuth: "aquabot:" + process.env.AQUA_BOT_PASSWORD,
+	host: "http://aquabot:" + process.env.AQUA_BOT_PASSWORD + "@192.168.0.13:9200",
 	log: 'trace'
 })
 
@@ -230,6 +229,83 @@ module.exports.waterChange = function(evtFunc, milliLiter){
 	}
 }
 
+function exeTemperature() {
+	child = exec("./DS18B20Scan -gpio 4", function (error, stdout, stderr) {
+   	if (error !== null) {
+        	console.log('exec error: ' + error);
+    	}
+		var result = stdout.split(' ');
+		console.log(result);
+		if(result[0] === "***"){
+			return;
+		}
+		temperature = result[7];
+	});
+}
+
+function timerChange(wasteRequestTime, refillRequestTime){
+	status = "timerchange";
+	wasteTime = wasteRequestTime;
+	refillTime = refillRequestTime;	
+
+	remainWasteTime = wasteTime;
+	remainRefillTime = refillTime;
+}
+
+var timerChangeScheduler = null;
+var schedulerInterval = 0;
+var schedulerWasteRequestTime = 0;
+var schedulerRefillRequestTime = 0;
+function startTimerScheduler(interval, wasteRequestTime, refillRequestTime){
+	schedulerInterval = interval;
+	schedulerWasteRequestTime = wasteRequestTime;
+	schedulerRefillRequestTime = refillRequestTime;
+
+	var intervalTime = 1000 * 60 /* 1min */ * 60 /* 1hour */ * 24 / interval;
+	timerChangeScheduler = setInterval(() => {
+		var json = {
+			type: "timerchange",
+			interval: interval,
+			wasteRequestTime: schedulerWasteRequestTime,
+			refillRequestTime: schedulerRefillRequestTime,
+			date: new Date()
+		};
+
+		client.index({
+			index: "aquabot_scheduler",
+			body: json
+		});
+		timerChange(schedulerWasteRequestTime, schedulerRefillRequestTime);
+	}, intervalTime);
+}
+
+function stopTimerScheduler(){
+	if(timerChangeScheduler){
+		clearInterval(timerChangeScheduler);
+
+		schedulerInterval = 0;
+		schedulerWasteRequestTime = 0;
+		schedulerRefillRequestTime = 0;
+		timerChangeScheduler = null;
+	}
+}
+
+function getTimerScheduler(){
+	if(timerChangeScheduler){
+		return {
+			type: "timerchange",
+			interval: schedulerInterval,
+			wasteRequestTIme: schedulerWasteRequestTime,
+			refillRequestTime: schedulerRefillRequestTime
+		}
+	}
+	else {
+		return {
+			type: "stop"
+		}
+	}
+}
+
 function getStatus(){
 	var valveStatus = {
 		pure: "none",
@@ -266,22 +342,11 @@ function getStatus(){
 		remainWasteTime: remainWasteTime,
 		remainRefillTime: remainRefillTime,
 		valve: valveStatus,
-		temperature: temperature
+		temperature: temperature,
+		schedulerInterval: schedulerInterval,
+		schedulerWasteRequestTime: schedulerWasteRequestTime,
+		schedulerRefillRequestTime: schedulerRefillRequestTime
 	};
-}
-
-function exeTemperature() {
-	child = exec("./DS18B20Scan -gpio 4", function (error, stdout, stderr) {
-   	if (error !== null) {
-        	console.log('exec error: ' + error);
-    	}
-		var result = stdout.split(' ');
-		console.log(result);
-		if(result[0] === "***"){
-			return;
-		}
-		temperature = result[7];
-	});
 }
 
 module.exports.getTemperature = function() {
@@ -298,6 +363,10 @@ module.exports.openSaltWaterValve = openSaltWaterValve;
 module.exports.closeSaltWaterValve = closeSaltWaterValve;
 module.exports.getSaltWaterValve = getSaltWaterValve;
 module.exports.getStatus = getStatus;
+module.exports.timerChange = timerChange;
+module.exports.startTimerScheduler = startTimerScheduler;
+module.exports.stopTimerScheduler = stopTimerScheduler;
+module.exports.getTimerScheduler = getTimerScheduler;
 
 //Timer Preset Loop
 setInterval(() => {
@@ -355,15 +424,6 @@ setInterval(() => {
 		status = "idle";
 	}
 }, 1000);
-
-module.exports.timerChange = function(wasteRequestTime, refillRequestTime){
-	status = "timerchange";
-	wasteTime = wasteRequestTime;
-	refillTime = refillRequestTime;	
-
-	remainWasteTime = wasteTime;
-	remainRefillTime = refillTime;
-}
 
 closeWasteWaterValve();
 closeSaltWaterValve();

@@ -38,7 +38,10 @@ wasteFlowSensor.watch(function (err, value) {
 		return;
 	}
 
-	console.log("Wasting Flow : " + wasteWaterFlowCount);
+	if(value == 1){
+		return;
+	}
+
 	wasteWaterFlowCount++;
 
 	if(status === "wasting"){

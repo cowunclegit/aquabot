@@ -15,7 +15,9 @@
     "express-session": "^1.17.1",
     "http-errors": "~1.6.3",
     "jade": "~1.11.0",
+    "mcp-spi-adc": "^3.1.0",
     "morgan": "~1.9.1",
+    "node-cron": "^2.0.3",
     "onoff": "^6.0.1",
     "passport": "^0.4.1",
     "passport-local": "^1.0.0"

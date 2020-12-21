@@ -267,6 +267,8 @@ class App extends React.Component {
       tempColor = "error";
     }
 
+    const kibana = {__html: '<iframe src="http://192.168.0.13:5601/app/dashboards#/view/cb402280-42f9-11eb-b53b-c363278ce9c2?embed=true&_g=(filters%3A!()%2CrefreshInterval%3A(pause%3A!t%2Cvalue%3A0)%2Ctime%3A(from%3Anow-2d%2Cto%3Anow))&hide-filter-bar=true" height="600" width="1200"></iframe>'};
+
     if(this.state.user == null){
       return (
         <CheckLogin />
@@ -308,6 +310,9 @@ class App extends React.Component {
             {timer}
             {scheduler}
             {schedulerStatus}
+            <Descriptions.Item>
+              <div dangerouslySetInnerHTML={ kibana } />
+            </Descriptions.Item>
           </Descriptions>
          </PageHeader>
          </header>

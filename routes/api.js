@@ -28,7 +28,7 @@ router.get('/valve', function (req, res, next) {
 
     var status = aquabot.getPureWaterValve();
 
-    if (status == 0) {
+    if (status == 1) {
       valveStatus.status = "close";
     }
     else {
@@ -40,7 +40,7 @@ router.get('/valve', function (req, res, next) {
 
     var status = aquabot.getWasteWaterValve();
 
-    if (status == 1) {
+    if (status == 0) {
       valveStatus.status = "close";
     }
     else {
@@ -52,7 +52,7 @@ router.get('/valve', function (req, res, next) {
 
     var status = aquabot.getSaltWaterValve();
 
-    if (status == 1) {
+    if (status == 0) {
       valveStatus.status = "close";
     }
     else {
@@ -71,7 +71,7 @@ router.post('/valve', function (req, res, next) {
 
   if (valve === "pure") {
     var status = aquabot.getPureWaterValve();
-    if(status == 0) {  //Pure는 LOW가 오픈임
+    if(status == 1) {  //Pure는 LOW가 오픈임
       aquabot.openPureWaterValve();
     }
     else{
@@ -81,7 +81,7 @@ router.post('/valve', function (req, res, next) {
   else if (valve === "waste") {
     var status = aquabot.getWasteWaterValve();
 
-    if (status == 1) {
+    if (status == 0) {
       aquabot.openWasteWaterValve();
     }
     else {
@@ -91,7 +91,7 @@ router.post('/valve', function (req, res, next) {
   else if (valve === "salt") {
     var status = aquabot.getSaltWaterValve();
 
-    if (status == 1) {
+    if (status == 0) {
       aquabot.openSaltWaterValve();
     }
     else {

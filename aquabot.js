@@ -1,17 +1,18 @@
 var Gpio = require('onoff').Gpio;
 var elasticsearch = require('elasticsearch');
 var client = new elasticsearch.Client({
-	host: "http://aquabot:" + process.env.AQUA_BOT_PASSWORD + "@192.168.0.13:9200",
+	host: "http://aquabot:" + process.env.AQUA_BOT_PASSWORD + "@localhost:9200",
 	log: 'trace'
 })
 
-var saltWaterLevelSensor = new Gpio(1, 'in', 'both'); 	//Yellow
-var wasteFlowSensor = new Gpio(12, 'in', 'both');		//White
-var saltFlowSensor = new Gpio(16, 'in', 'both');		//Orange
+var saltWaterLevelSensor = new Gpio(5, 'in', 'both');
+var wasteFlowSensor = new Gpio(16, 'in', 'both');
+var saltFlowSensor = new Gpio(21, 'in', 'both');
+var pureFlowSensor = new Gpio(20, 'in', 'both');
 
-var wasteWaterValve = new Gpio(20, 'out');	//Purple
-var pureWaterValve = new Gpio(21, 'out');	//Brown
-var saltWaterValve = new Gpio(26, 'out');	//Red
+var wasteWaterValve = new Gpio(1, 'out');
+var pureWaterValve = new Gpio(25, 'out');
+var saltWaterValve = new Gpio(24, 'out');
 
 var saltEmptyEvtFunc = null;
 var waterChangeEvtFunc = null;
@@ -38,11 +39,8 @@ wasteFlowSensor.watch(function (err, value) {
 		return;
 	}
 
-	if(value == 1){
-		return;
-	}
-
 	wasteWaterFlowCount++;
+	console.log(wasteWaterFlowCount);
 
 	if(status === "wasting"){
 		waterChangeEvtFunc({
@@ -172,11 +170,11 @@ setInterval(function() {
 }, 30000);
 
 function openWasteWaterValve(){
-	wasteWaterValve.writeSync(0);
+	wasteWaterValve.writeSync(1);
 }
 
 function closeWasteWaterValve(){
-	wasteWaterValve.writeSync(1);
+	wasteWaterValve.writeSync(0);
 }
 
 function getWasteWaterValve(){
@@ -184,11 +182,11 @@ function getWasteWaterValve(){
 }
 
 function openPureWaterValve(){
-	pureWaterValve.writeSync(1);
+	pureWaterValve.writeSync(0);
 }
 
 function closePureWaterValve(){
-	pureWaterValve.writeSync(0);
+	pureWaterValve.writeSync(1);
 }
 
 function getPureWaterValve(){
@@ -196,11 +194,11 @@ function getPureWaterValve(){
 }
 
 function openSaltWaterValve(){
-	saltWaterValve.writeSync(0);
+	saltWaterValve.writeSync(1);
 }
 
 function closeSaltWaterValve(){
-	saltWaterValve.writeSync(1);
+	saltWaterValve.writeSync(0);
 }
 
 function getSaltWaterValve(){
@@ -316,21 +314,21 @@ function getStatus(){
 		salt: "none"
 	};
 	
-	if (getPureWaterValve() == 0) {
+	if (getPureWaterValve() == 1) {
 		valveStatus.pure = "close";
 	}
 	else {
 		valveStatus.pure = "open";
 	}
 	
-	if (getWasteWaterValve() == 1) {
+	if (getWasteWaterValve() == 0) {
 		valveStatus.waste = "close";
 	}
 	else {
 		valveStatus.waste = "open";
 	}
 	
-	if (getSaltWaterValve() == 1) {
+	if (getSaltWaterValve() == 0) {
 		valveStatus.salt = "close";
 	}
 	else {
@@ -382,45 +380,45 @@ setInterval(() => {
 	}*/
 	
 	if(remainWasteTime > 0){
-		if(getWasteWaterValve() == 1){
+		if(getWasteWaterValve() == 0){
 			openWasteWaterValve();
 		}
 
-		if(getPureWaterValve() == 1){
+		if(getPureWaterValve() == 0){
 			closePureWaterValve();
 		}
 
-		if(getSaltWaterValve() == 0){
+		if(getSaltWaterValve() == 1){
 			closeSaltWaterValve();
 		}
 
 		remainWasteTime--;
 	}
 	else if(remainRefillTime > 0){
-		if(getWasteWaterValve() == 0){
+		if(getWasteWaterValve() == 1){
 			closeWasteWaterValve();
 		}
 
-		if(getPureWaterValve() == 1){
+		if(getPureWaterValve() == 0){
 			closePureWaterValve();
 		}
 
-		if(getSaltWaterValve() == 1){
+		if(getSaltWaterValve() == 0){
 			openSaltWaterValve();
 		}
 
 		remainRefillTime--;
 	}
 	else if(status === "timerchange"){
-		if(getPureWaterValve() == 0){
+		if(getPureWaterValve() == 1){
 			openPureWaterValve();
 		}
 
-		if(getSaltWaterValve() == 0){
+		if(getSaltWaterValve() == 1){
 			closeSaltWaterValve();
 		}
 
-		if(getWasteWaterValve() == 0){
+		if(getWasteWaterValve() == 1){
 			closeWasteWaterValve();
 		}
 

@@ -42,6 +42,7 @@ wasteFlowSensor.watch(function (err, value) {
 	wasteWaterFlowCount++;
 	console.log(wasteWaterFlowCount);
 
+	/*
 	if(status === "wasting"){
 		waterChangeEvtFunc({
 			status: "wasting",
@@ -53,7 +54,7 @@ wasteFlowSensor.watch(function (err, value) {
 			closeWasteWaterValve();
 			openSaltWaterValve();
 		}
-	}
+	}*/
 });
 
 saltFlowSensor.watch(function (err, value) {
@@ -170,6 +171,7 @@ setInterval(function() {
 }, 30000);
 
 function openWasteWaterValve(){
+	wasteWaterFlowCount = 0;
 	wasteWaterValve.writeSync(1);
 }
 
@@ -257,6 +259,7 @@ var timerChangeScheduler = null;
 var schedulerInterval = 0;
 var schedulerWasteRequestTime = 0;
 var schedulerRefillRequestTime = 0;
+
 function startTimerScheduler(interval, wasteRequestTime, refillRequestTime){
 	schedulerInterval = interval;
 	schedulerWasteRequestTime = wasteRequestTime;

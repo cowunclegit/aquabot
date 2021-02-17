@@ -8,7 +8,7 @@ var client = new elasticsearch.Client({
 var saltWaterLevelSensor = new Gpio(5, 'in', 'both');
 var wasteFlowSensor = new Gpio(16, 'in', 'both');
 var saltFlowSensor = new Gpio(21, 'in', 'both');
-var pureFlowSensor = new Gpio(20, 'in', 'both');
+//var pureFlowSensor = new Gpio(20, 'in', 'both');
 
 var wasteWaterValve = new Gpio(1, 'out');
 var pureWaterValve = new Gpio(25, 'out');
